@@ -1,0 +1,6 @@
+data/*
+*.csv
+*.pyc
+images/*
+*.pkl
+*.txt
