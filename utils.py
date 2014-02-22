@@ -112,3 +112,92 @@ def label_distance(label, indices_a, indices_b):
 		import pdb;pdb.set_trace()
 
 	return euclidean_distance(point_a, point_b)
+
+# flips an image horizontally
+def flip_horizontal(matrix):
+	if type(matrix) == list:
+		return [row[::-1] for row in matrix]
+
+	return matrix[...,::-1]
+
+
+# builds a training set for just eyes
+def build_eye_trainset(train_set, labels):
+	# to_shuffle = zip(train_set, labels)
+	# np.random.shuffle(to_shuffle)
+	# train_set, labels = zip(*to_shuffle)
+
+	eyes = []
+
+	for i, label in enumerate(labels):
+		dist_h_left_eye = label_distance(label, left_eye_inner, left_eye_outer)
+		dist_h_right_eye = label_distance(label, right_eye_inner, right_eye_outer)
+
+		# add each eye image with a positive label
+		if dist_h_left_eye != 0 and dist_h_left_eye != None:
+			left = label[4]
+			right = label[6]
+			middle = np.average([label[5], label[7]])
+
+			padding = (EYE_WIDTH - (right - left))
+
+			left = left - padding/2.
+			right = right + padding/2.
+			top = middle - EYE_HEIGHT/2.
+			bot = middle + EYE_HEIGHT/2.
+
+			left = int(np.round(left))
+			right = int(np.round(right))
+			top = int(np.round(top))
+			bot = int(np.round(bot))
+
+			if (top - bot) < 24:
+				bot += 1
+
+			subimg = get_subimage(train_set[i], (top, left), (bot, right))
+			tl_l = (top, left)
+			br_l = (bot, right)
+			eyes.append((subimg, 1, i))
+
+		if dist_h_right_eye != 0 and dist_h_right_eye != None:
+			left = label[10]
+			right = label[8]
+			middle = np.average([label[9], label[11]])
+
+			padding = (EYE_WIDTH - (right - left))
+
+			left = left - padding/2.
+			right = right + padding/2.
+			top = middle - EYE_HEIGHT/2.
+			bot = middle + EYE_HEIGHT/2.
+
+			left = int(np.round(left))
+			right = int(np.round(right))
+			top = int(np.round(top))
+			bot = int(np.round(bot))
+
+			subimg = get_subimage(train_set[i], (top, left), (bot, right))
+			tl_r = (top, left)
+			br_r = (bot, right)
+			eyes.append((flip_horizontal(subimg), 1, i))
+
+		def random(x):
+			return int(np.random.random() * x)
+
+		def too_close(new, *others):
+			for other in others:
+				if euclidean_distance(new, other) < TOO_CLOSE_VALUE:
+					return True
+			return False
+
+		for _ in xrange(2):
+			tl = (random(96 - EYE_HEIGHT), random(96 - EYE_WIDTH))
+			br = (tl[0] + EYE_HEIGHT, tl[1] + EYE_WIDTH)
+
+			while too_close(tl, tl_l, tl_r) or too_close(br, br_l, br_r):
+				tl = (random(96 - EYE_HEIGHT), random(96 - EYE_WIDTH))
+				br = (tl[0] + EYE_HEIGHT, tl[1] + EYE_WIDTH)
+
+			eyes.append((get_subimage(train_set[i], tl, br), 0))
+
+	return eyes
